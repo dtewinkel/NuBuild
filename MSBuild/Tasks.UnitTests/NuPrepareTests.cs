@@ -1,102 +1,125 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Text;
-using System.Xml;
 using JetBrains.Annotations;
-using Microsoft.Build.Construction;
-using Microsoft.Build.Execution;
 using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
 using NUnit.Framework;
+using NuBuild.MSBuild;
 
 namespace Tasks.UnitTests
 {
    [TestFixture]
    public class NuPrepareTests
    {
-      private const string _projectXml = "<?xml version='1.0' encoding='utf-8'?>\n" +
-                                         "<Project xmlns='http://schemas.microsoft.com/developer/msbuild/2003' ToolsVersion='4.0' >\n" +
-                                         "  <Target Name='build'>\n" +
-                                         "{0}" +
-                                         "    </NuPrepare>\n" +
-                                         "  </Target>\n" +
-                                         "</Project>\n";
+      [NotNull]
+      private readonly FakeBuildEngine _buildEngine = new FakeBuildEngine();
+
+      [NotNull]
+      private readonly List<string> _filesToClean = new List<string>();
+
+      private string _basePath;
+
+
+      [TestFixtureSetUp]
+      public void TestFixtureSetUp()
+      {
+         _basePath = Path.Combine(Path.GetTempPath(), "NuBuild.UnitTests\\");
+         if (!Directory.Exists(_basePath))
+         {
+            Directory.CreateDirectory(_basePath);
+         }
+         Assert.That(Directory.Exists(_basePath));
+      }
+
+
+      [TestFixtureTearDown]
+      public void TestFixtureTearDown()
+      {
+         if (Directory.Exists(_basePath))
+         {
+            Directory.Delete(_basePath, true);
+         }
+      }
+
+
+      [SetUp]
+      public void TestSetUp()
+      {
+         _buildEngine.ClearLoggedEvents();
+      }
+
+
+      [TearDown]
+      public void TearDown()
+      {
+         foreach (string fileName in _filesToClean)
+         {
+            if (File.Exists(fileName))
+            {
+               File.Delete(fileName);
+            }
+         }
+      }
+
 
       [Test]
       public void TestSomething()
       {
-         const string taskXml = "    <NuPrepare NuSpec='{0}'\n" +
-                                "               ProjectName='Test'\n" +
-                                "               VersionSource='Manual'\n" +
-                                "               OutputPath='{1}'\n" +
-                                "               BuildNumber='12'\n" +
-                                "               ReferenceLibraries=''>\n" +
-                                "      <Output TaskParameter='NuSpec' ItemName='NuPrepared'/>\n" +
-                                "      <Output TaskParameter='Sources' ItemName='NuSources'/>\n" +
-                                "      <Output TaskParameter='Targets' ItemName='NuTargets'/>\n";
-
          const string nuGetSpecXml = "<?xml version='1.0' encoding='utf-8'?>\n" +
-                                    "<package xmlns='http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd'>\n" +
-                                    "  <metadata>\n" +
-                                    "\n" +
-                                    "  </metadata>\n" +
-                                    "</package>\n";
+                                     "<package xmlns='http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd'>\n" +
+                                     "  <metadata>\n" +
+                                     "    <id>Test.Project</id>\n" +
+                                     "    <version>1.0.0</version>\n" +
+                                     "  </metadata>\n" +
+                                     "</package>\n";
 
-         string processedSpec;
-         BuildResult result = RunTask(nuGetSpecXml, out processedSpec, taskXml);
-         Assert.AreEqual(result.OverallResult, BuildResultCode.Success);
+         NuPrepare task = CreateTask(nuGetSpecXml);
+         bool success = task.Execute();
+         Assert.That(success, Is.True);
+         Assert.That(_buildEngine.LogErrorEvents.Count, Is.EqualTo(0));
+         Assert.That(_buildEngine.LogWarningEvents.Count, Is.EqualTo(0));
+         Assert.That(_buildEngine.LogCustomEvents.Count, Is.EqualTo(0));
+         Assert.That(_buildEngine.LogMessageEvents.Count, Is.EqualTo(0));
       }
 
-      [NotNull]
-      BuildResult RunTask([NotNull] string nuGetSpec, out string processedSpec, [NotNull] string taskXml)
+
+      [Test]
+      public void TestEmptyNuSpec()
       {
-         string inputFileName = Path.GetTempPath() + Guid.NewGuid().ToString() + ".nuspec";
-         string outputFileName = Path.GetTempPath() + Guid.NewGuid().ToString() + ".nuspec";
+         NuPrepare task = CreateTask("");
+         bool success = task.Execute();
+         Assert.That(success, Is.False);
+         Assert.That(_buildEngine.LogErrorEvents.Count, Is.EqualTo(1));
+         Assert.That(_buildEngine.LogErrorEvents[0].Message, Contains.Substring("XmlException"));
+         Assert.That(_buildEngine.LogWarningEvents.Count, Is.EqualTo(0));
+         Assert.That(_buildEngine.LogCustomEvents.Count, Is.EqualTo(0));
+         Assert.That(_buildEngine.LogMessageEvents.Count, Is.EqualTo(0));
+      }
 
-         try
-         {
-            File.WriteAllText(inputFileName, nuGetSpec, Encoding.UTF8);
 
-            string formattedTaskXml = string.Format(taskXml, inputFileName, outputFileName);
-            string xml = string.Format(_projectXml, formattedTaskXml);
-            ProjectRootElement rootElement = ProjectRootElement.Create(new XmlTextReader(new StringReader(xml)));
-            rootElement.AddUsingTask("NuBuild.MSBuild.NuPrepare", "NuBuild.MSBuild.Tasks.dll", null);
+      [NotNull]
+      private NuPrepare CreateTask([NotNull] string nuGetSpec)
+      {
+         string inputFileName = Path.Combine(_basePath, Guid.NewGuid().ToString() + ".nuspec");
+         _filesToClean.Add(inputFileName);
+         string outputPath = _basePath;
 
-            ProjectInstance project = new ProjectInstance(rootElement);
-            BuildRequestData requestData = new BuildRequestData(project, new[]
-               {
-                  "build"
-               });
-            BuildParameters buildParameters = new BuildParameters
-               {
-                  Loggers = new List<ILogger>
-                     {
-                        new LogInterceptor()
-                     }
-               };
+         File.WriteAllText(inputFileName, nuGetSpec, Encoding.UTF8);
 
-            BuildResult result = BuildManager.DefaultBuildManager.Build(buildParameters, requestData);
-
-            processedSpec = null;
-            if (File.Exists(outputFileName))
+         ITaskItem taskItem = new TaskItem(inputFileName);
+         return new NuPrepare
             {
-               processedSpec = File.ReadAllText(outputFileName);
-            }
-
-            return result;
-         }
-         finally
-         {
-            if (File.Exists(inputFileName))
-            {
-               File.Delete(inputFileName);
-            }
-            if (File.Exists(outputFileName))
-            {
-               File.Delete(outputFileName);
-            }
-         }
+               BuildEngine = _buildEngine,
+               NuSpec = new[]
+                  {
+                     taskItem
+                  },
+               OutputPath = outputPath,
+               BuildNumber = 12,
+               VersionSource = "Manual"
+            };
       }
    }
 }

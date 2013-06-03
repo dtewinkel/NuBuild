@@ -37,6 +37,7 @@
     </Reference>
     <Reference Include="Microsoft.Build" />
     <Reference Include="Microsoft.Build.Framework" />
+    <Reference Include="Microsoft.Build.Utilities.v4.0" />
     <Reference Include="nunit.framework">
       <HintPath>..\..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
     </Reference>
@@ -49,7 +50,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LogInterceptor.cs" />
+    <Compile Include="FakeBuildEngine.cs" />
     <Compile Include="NuPrepareTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
