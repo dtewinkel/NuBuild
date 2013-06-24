@@ -26,6 +26,14 @@ namespace Tasks.UnitTests
          Assert.That(BuildEngine.LogWarningEvents.Count, Is.EqualTo(0));
          Assert.That(BuildEngine.LogCustomEvents.Count, Is.EqualTo(0));
          Assert.That(BuildEngine.LogMessageEvents.Count, Is.EqualTo(0));
+         Assert.That(task.Targets.Length, Is.EqualTo(1));
+         Assert.That(task.Targets[0].ItemSpec, Is.Not.Empty);
+         Assert.That(task.Targets[0].ItemSpec, Is.StringEnding("Test.Project.nupkg"));
+         Assert.That(task.NuSpec.Length, Is.EqualTo(1));
+         Assert.That(task.NuSpec[0].ItemSpec, Is.Not.Empty);
+         Assert.That(task.Sources.Length, Is.EqualTo(1));
+         Assert.That(task.Sources[0].ItemSpec, Is.Not.Empty);
+         Assert.That(task.Sources[0].ItemSpec, Is.EqualTo(task.NuSpec[0].ItemSpec));
       }
 
 
