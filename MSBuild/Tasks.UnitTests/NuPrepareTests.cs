@@ -9,7 +9,7 @@ namespace Tasks.UnitTests
    public class NuPrepareTests : TaskTestBase
    {
       [Test]
-      public void TestSomething()
+      public void MinimalValidFileTest()
       {
          const string nuGetSpecXml = "<?xml version='1.0' encoding='utf-8'?>\n" +
                                      "<package xmlns='http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd'>\n" +
@@ -20,6 +20,7 @@ namespace Tasks.UnitTests
                                      "</package>\n";
 
          NuPrepare task = CreateTask(nuGetSpecXml);
+         Assert.That(task.VersionFileName, Is.False);
          bool success = task.Execute();
          Assert.That(success, Is.True);
          Assert.That(BuildEngine.LogErrorEvents.Count, Is.EqualTo(0));
@@ -38,7 +39,7 @@ namespace Tasks.UnitTests
 
 
       [Test]
-      public void TestEmptyNuSpec()
+      public void EmptyNuSpecTest()
       {
          NuPrepare task = CreateTask("");
          bool success = task.Execute();
@@ -51,6 +52,35 @@ namespace Tasks.UnitTests
       }
 
 
+
+
+      [Test]
+      public void FileWithDependenciesTest()
+      {
+         const string nuGetSpecXml = "<?xml version='1.0' encoding='utf-8'?>\n" +
+                                     "<package xmlns='http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd'>\n" +
+                                     "  <metadata>\n" +
+                                     "    <id>Test.Project</id>\n" +
+                                     "    <version>1.0.0</version>\n" +
+                                     "    <dependencies>\n" +
+                                     "      <dependency id='another-package' version='3.0.0' />\n" +
+                                     "    </dependencies>\n" +
+                                     "  </metadata>\n" +
+                                     "  <files>\n" +
+                                     "  </files>\n" +
+                                     "</package>\n";
+
+         NuPrepare task = CreateTask(nuGetSpecXml);
+         bool success = task.Execute();
+         Assert.That(success, Is.True);
+         Assert.That(BuildEngine.LogErrorEvents.Count, Is.EqualTo(0));
+         Assert.That(BuildEngine.LogWarningEvents.Count, Is.EqualTo(0));
+         Assert.That(BuildEngine.LogCustomEvents.Count, Is.EqualTo(0));
+         Assert.That(BuildEngine.LogMessageEvents.Count, Is.EqualTo(0));
+      }
+
+
+
       [NotNull]
       private NuPrepare CreateTask([NotNull] string nuGetSpec)
       {
@@ -61,9 +91,9 @@ namespace Tasks.UnitTests
 
       [NotNull]
       private NuPrepare CreateTask([NotNull] string basePath, [NotNull] ITaskItem[] nuSpecTaskItems,
-         int buildNumber = 1, string versionSource = "Manual")
+         int buildNumber = 1, string versionSource = "Manual", bool? versionFileName = null)
       {
-         return new NuPrepare
+         NuPrepare task = new NuPrepare
          {
             BuildEngine = BuildEngine,
             NuSpec = nuSpecTaskItems,
@@ -71,6 +101,12 @@ namespace Tasks.UnitTests
             BuildNumber = buildNumber,
             VersionSource = versionSource
          };
+
+         if (versionFileName.HasValue)
+         {
+            task.VersionFileName = versionFileName.Value;
+         }
+         return task;
       }
    }
 }
