@@ -11,5 +11,3 @@ TestResults
 # user files
 *.user
 *.suo
-
-packages/
