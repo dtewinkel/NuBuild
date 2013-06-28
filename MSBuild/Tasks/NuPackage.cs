@@ -77,7 +77,7 @@ namespace NuBuild.MSBuild
       {
          try
          {
-            // parepare the task for execution
+            // prepare the task for execution
             if (this.ReferenceLibraries == null)
                this.ReferenceLibraries = new ITaskItem[0];
             this.OutputPath = Path.GetFullPath(this.OutputPath);
