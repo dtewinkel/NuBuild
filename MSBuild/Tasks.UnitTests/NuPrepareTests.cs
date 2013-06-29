@@ -8,6 +8,8 @@ namespace Tasks.UnitTests
    [TestFixture]
    public class NuPrepareTests : TaskTestBase
    {
+      #region Tests.
+
       [Test]
       public void MinimalValidFileTest()
       {
@@ -79,7 +81,9 @@ namespace Tasks.UnitTests
          Assert.That(BuildEngine.LogMessageEvents.Count, Is.EqualTo(0));
       }
 
+      #endregion
 
+      #region Helper functions.
 
       [NotNull]
       private NuPrepare CreateTask([NotNull] string nuGetSpec)
@@ -108,5 +112,7 @@ namespace Tasks.UnitTests
          }
          return task;
       }
+
+      #endregion
    }
 }
