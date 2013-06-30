@@ -106,19 +106,19 @@ namespace Tasks.UnitTests
 
 
       [NotNull]
-      private NuPackage CreateTaskFromMetadata([NotNull] string version, [NotNull] string fileName)
+      private NuPackage CreateTaskFromMetadata([NotNull] string version, [NotNull] string packageFileName)
       {
          string nuGetSpec = string.Format(_basePackageContent, version);
-         return CreateTask(nuGetSpec, version, fileName);
+         return CreateTask(nuGetSpec, version, packageFileName);
       }
 
 
       [NotNull]
-      private NuPackage CreateTask([NotNull] string nuGetSpec, [NotNull] string version, [NotNull] string fileName)
+      private NuPackage CreateTask([NotNull] string nuGetSpec, [NotNull] string version, [NotNull] string packageFileName)
       {
          ITaskItem taskItem = CreateTaskItem(BasePath, nuGetSpec);
          taskItem.SetMetadata("NuPackageVersion", version);
-         taskItem.SetMetadata("NuPackagePath", Path.Combine(BasePath, fileName));
+         taskItem.SetMetadata("NuPackagePath", Path.Combine(BasePath, packageFileName));
          return CreateTask(BasePath, BasePath, new[] { taskItem });
       }
 

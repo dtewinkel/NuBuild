@@ -41,10 +41,10 @@
     <Reference Include="Microsoft.Build.Utilities.v4.0" />
     <Reference Include="NuGet.Core, Version=2.6.40619.9041, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\NuGet.Core.2.6.0\lib\net40-Client\NuGet.Core.dll</HintPath>
+      <HintPath>..\..\..\packages\NuGet.Core.2.6.0\lib\net40-Client\NuGet.Core.dll</HintPath>
     </Reference>
     <Reference Include="nunit.framework">
-      <HintPath>..\..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
+      <HintPath>..\..\..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -65,7 +65,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Tasks\Tasks.csproj">
+    <ProjectReference Include="..\..\Tasks\Tasks.csproj">
       <Project>{a0b266f8-f6a5-4a13-9403-f2e07b963f21}</Project>
       <Name>Tasks</Name>
       <Private>True</Private>
