@@ -5,6 +5,25 @@ using NuBuild.MSBuild;
 
 namespace Tasks.UnitTests
 {
+   /// <summary>
+   /// Test the <see cref="NuPrepare"/> task.
+   /// </summary>
+   /// <remarks>
+   /// A NuPrepare section may look like:
+   /// <example>
+   ///       <NuPrepare NuSpec="@(Compile)"
+   ///                 ProjectName="$(MSBuildProjectName)"
+   ///                 VersionSource="$(NuBuildVersionSource)"
+   ///                 VersionFileName="$(NuBuildVersionFileName)"
+   ///                 OutputPath="$(OutputPath)"
+   ///                 BuildNumber="$(BuildNumber)"
+   ///                 ReferenceLibraries="@(__ReferenceLibraries)">
+   ///         <Output TaskParameter="NuSpec" ItemName="NuPrepared"/>
+   ///         <Output TaskParameter="Sources" ItemName="NuSources"/>
+   ///         <Output TaskParameter="Targets" ItemName="NuTargets"/>
+   ///       </NuPrepare>
+   /// </example>
+   /// </remarks>
    [TestFixture]
    public class NuPrepareTests : TaskTestBase
    {
