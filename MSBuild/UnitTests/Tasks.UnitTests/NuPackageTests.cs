@@ -2,6 +2,7 @@
 using JetBrains.Annotations;
 using Microsoft.Build.Framework;
 using NuBuild.MSBuild;
+using NuGet;
 using NUnit.Framework;
 using NuSpecGenerator;
 
@@ -21,11 +22,12 @@ namespace Tasks.UnitTests
       public void MinimalValidFileTest()
       {
          // Prepare.
-         const string version = "1.0.0-test02";
-         string filePath = CreatePackageFileName("Test.Project");
+         const string packageId = "Test.Project";
+         const string version = "1.0.1";
+         string filePath = CreatePackageFileName(packageId);
 
-         NuSpec spec = new NuSpec(version);
-         NuPackage task = CreateTaskFromSpec(spec, "1.0.0", filePath);
+         NuSpec spec = new NuSpec(packageId, version);
+         NuPackage task = CreateTaskFromSpec(spec, version, filePath);
 
          // Act.
          bool success = task.Execute();
@@ -35,6 +37,8 @@ namespace Tasks.UnitTests
          Assert.That(task.NuSpec.Length, Is.EqualTo(1));
          Assert.That(task.NuSpec[0].ItemSpec, Is.Not.Empty);
          Assert.That(File.Exists(filePath));
+
+         ValidatePackage(filePath, spec);
       }
 
 
@@ -42,10 +46,11 @@ namespace Tasks.UnitTests
       public void PreReleaseVersionTest()
       {
          // Prepare.
+         const string packageId = "Test.Project";
          const string version = "1.0.0-test02";
-         string filePath = CreatePackageFileName("Test.Project");
+         string filePath = CreatePackageFileName(packageId);
 
-         NuSpec spec = new NuSpec(version);
+         NuSpec spec = new NuSpec(packageId, version);
          NuPackage task = CreateTaskFromSpec(spec, version, filePath);
 
          // Act.
@@ -56,7 +61,8 @@ namespace Tasks.UnitTests
 
          Assert.That(task.NuSpec.Length, Is.EqualTo(1));
          Assert.That(task.NuSpec[0].ItemSpec, Is.Not.Empty);
-         Assert.That(File.Exists(filePath));
+
+         ValidatePackage(filePath, spec);
       }
 
 
@@ -64,10 +70,11 @@ namespace Tasks.UnitTests
       public void PreReleaseVersionInFileNameTest()
       {
          // Prepare.
+         const string packageId = "Test.Project";
          const string version = "1.0.0-pre1";
-         string filePath = CreatePackageFileNameWithVersion("Test.Project", version);
+         string filePath = CreatePackageFileNameWithVersion(packageId, version);
 
-         NuSpec spec = new NuSpec(version);
+         NuSpec spec = new NuSpec(packageId, version);
          NuPackage task = CreateTaskFromSpec(spec, version, filePath);
 
          // Act.
@@ -78,7 +85,8 @@ namespace Tasks.UnitTests
 
          Assert.That(task.NuSpec.Length, Is.EqualTo(1));
          Assert.That(task.NuSpec[0].ItemSpec, Is.Not.Empty);
-         Assert.That(File.Exists(filePath));
+
+         ValidatePackage(filePath, spec);
       }
 
 
@@ -104,6 +112,28 @@ namespace Tasks.UnitTests
       #endregion
 
       #region Helper functions.
+
+
+
+      [NotNull]
+      private IPackage ValidatePackage([NotNull] string filePath, [NotNull] NuSpec spec)
+      {
+         Assert.IsNotNull(spec);
+         Assert.IsNotNull(spec.Package);
+         Assert.IsNotNull(spec.Package.Metadata);
+
+         string id = spec.Package.Metadata.Id;
+         SemanticVersion version = new SemanticVersion(spec.Version);
+         Assert.That(File.Exists(filePath));
+
+
+         IPackageRepository repository = PackageRepositoryFactory.Default.CreateRepository(BasePath);
+         IPackage package = repository.FindPackage(id);
+         Assert.IsNotNull(package);
+         Assert.That(package.Id, Is.EqualTo(id));
+         Assert.That(package.Version, Is.EqualTo(version));
+         return package;
+      }
 
       private void AssertSuccessAndNoMessages(bool success)
       {

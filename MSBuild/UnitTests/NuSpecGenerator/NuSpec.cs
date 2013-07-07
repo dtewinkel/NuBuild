@@ -52,12 +52,13 @@ namespace NuSpecGenerator
          Package = new Package();
       }
 
-      public NuSpec([CanBeNull] string version)
+      public NuSpec([CanBeNull] string id, [CanBeNull] string version)
       {
          Package = new Package
          {
             Metadata =
             {
+               Id = id,
                Version = version
             }
          };
