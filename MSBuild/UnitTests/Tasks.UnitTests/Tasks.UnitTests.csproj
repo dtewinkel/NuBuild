@@ -70,6 +70,10 @@
       <Name>Tasks</Name>
       <Private>True</Private>
     </ProjectReference>
+    <ProjectReference Include="..\NuSpecGenerator\NuSpecGenerator.csproj">
+      <Project>{4835ad70-c77d-42e4-9c71-6b0997861243}</Project>
+      <Name>NuSpecGenerator</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

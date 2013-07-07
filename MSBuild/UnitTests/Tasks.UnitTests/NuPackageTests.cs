@@ -3,11 +3,12 @@ using JetBrains.Annotations;
 using Microsoft.Build.Framework;
 using NuBuild.MSBuild;
 using NUnit.Framework;
+using NuSpecGenerator;
 
 namespace Tasks.UnitTests
 {
    [TestFixture]
-   class NuPackageTests : TaskTestBase
+   internal class NuPackageTests : TaskTestBase
    {
       #region Set up and tear down.
 
@@ -19,72 +20,84 @@ namespace Tasks.UnitTests
       [Test]
       public void MinimalValidFileTest()
       {
-         const string fileName = "Test.Project.nupkg";
-         string filePath = Path.Combine(BasePath, fileName);
+         // Prepare.
+         const string version = "1.0.0-test02";
+         string filePath = CreatePackageFileName("Test.Project");
 
-         NuPackage task = CreateTaskFromMetadata("1.0.0", fileName);
+         NuSpec spec = new NuSpec(version);
+         NuPackage task = CreateTaskFromSpec(spec, "1.0.0", filePath);
+
+         // Act.
          bool success = task.Execute();
-         Assert.That(success, Is.True);
-         Assert.That(BuildEngine.LogErrorEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogWarningEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogCustomEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogMessageEvents.Count, Is.EqualTo(0));
+
+         // Assert.
+         AssertSuccessAndNoMessages(success);
          Assert.That(task.NuSpec.Length, Is.EqualTo(1));
          Assert.That(task.NuSpec[0].ItemSpec, Is.Not.Empty);
          Assert.That(File.Exists(filePath));
-         FilesToClean.Add(filePath);
       }
+
 
       [Test]
       public void PreReleaseVersionTest()
       {
-         const string fileName = "Test.Project.nupkg";
-         string filePath = Path.Combine(BasePath, fileName);
+         // Prepare.
+         const string version = "1.0.0-test02";
+         string filePath = CreatePackageFileName("Test.Project");
 
-         NuPackage task = CreateTaskFromMetadata("1.0.0-pre1", fileName);
+         NuSpec spec = new NuSpec(version);
+         NuPackage task = CreateTaskFromSpec(spec, version, filePath);
+
+         // Act.
          bool success = task.Execute();
-         Assert.That(success, Is.True);
-         Assert.That(BuildEngine.LogErrorEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogWarningEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogCustomEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogMessageEvents.Count, Is.EqualTo(0));
+
+         // Assert.
+         AssertSuccessAndNoMessages(success);
+
          Assert.That(task.NuSpec.Length, Is.EqualTo(1));
          Assert.That(task.NuSpec[0].ItemSpec, Is.Not.Empty);
          Assert.That(File.Exists(filePath));
-         FilesToClean.Add(filePath);
       }
 
 
       [Test]
       public void PreReleaseVersionInFileNameTest()
       {
-         const string fileName = "Test.Project.1.0.0-pre1.nupkg";
-         string filePath = Path.Combine(BasePath, fileName);
+         // Prepare.
+         const string version = "1.0.0-pre1";
+         string filePath = CreatePackageFileNameWithVersion("Test.Project", version);
 
-         NuPackage task = CreateTaskFromMetadata("1.0.0-pre1", fileName);
+         NuSpec spec = new NuSpec(version);
+         NuPackage task = CreateTaskFromSpec(spec, version, filePath);
+
+         // Act.
          bool success = task.Execute();
-         Assert.That(success, Is.True);
-         Assert.That(BuildEngine.LogErrorEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogWarningEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogCustomEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogMessageEvents.Count, Is.EqualTo(0));
+
+         // Assert.
+         AssertSuccessAndNoMessages(success);
+
          Assert.That(task.NuSpec.Length, Is.EqualTo(1));
          Assert.That(task.NuSpec[0].ItemSpec, Is.Not.Empty);
          Assert.That(File.Exists(filePath));
-         FilesToClean.Add(filePath);
       }
+
 
       [Test]
       public void EmptyNuSpecTest()
       {
-         NuPackage task = CreateTask("", "1.0.1", "NoFile.nupkg");
+         // Prepare.
+         NuSpec spec = new NuSpec
+         {
+            Package = null
+         };
+         NuPackage task = CreateTaskFromSpec(spec, "", "");
+
+         // Act.
          bool success = task.Execute();
-         Assert.That(success, Is.False);
-         Assert.That(BuildEngine.LogErrorEvents.Count, Is.EqualTo(1));
+
+         // Assert.
+         AssertFailAndHasErrors(success, errorCount: 1);
          Assert.That(BuildEngine.LogErrorEvents[0].Message, Contains.Substring("XmlException"));
-         Assert.That(BuildEngine.LogWarningEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogCustomEvents.Count, Is.EqualTo(0));
-         Assert.That(BuildEngine.LogMessageEvents.Count, Is.EqualTo(0));
       }
 
 
@@ -92,34 +105,63 @@ namespace Tasks.UnitTests
 
       #region Helper functions.
 
-      private const string _basePackageContent = 
-         "<?xml version='1.0' encoding='utf-8'?>\n" + 
-         "<package xmlns='http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd'>\n" + 
-         "  <metadata>\n" + 
-         "    <id>Test.Project</id>\n" + 
-         "    <version>{0}</version>\n" + 
-         "    <title>A Unit-Test Library Package</title>\n" + 
-         "    <authors>Brent M. Spell, Daniël te Winkel</authors>\n" + 
-         "    <description>A unit-test package.</description>\n" + 
-         "  </metadata>\n" + 
-         "</package>\n";
-
-
-      [NotNull]
-      private NuPackage CreateTaskFromMetadata([NotNull] string version, [NotNull] string packageFileName)
+      private void AssertSuccessAndNoMessages(bool success)
       {
-         string nuGetSpec = string.Format(_basePackageContent, version);
-         return CreateTask(nuGetSpec, version, packageFileName);
+         Assert.That(success, Is.True);
+
+         AssertMessageCounts(0, 0, 0, 0);
+      }
+
+      private void AssertFailAndHasErrors(bool success, int errorCount, int warningCount = 0, int customCount = 0, int messageCount = 0)
+      {
+         Assert.That(success, Is.False);
+
+         AssertMessageCounts(errorCount, warningCount, customCount, messageCount);
+      }
+
+
+      private void AssertMessageCounts(int errorCount, int warningCount, int customCount, int messageCount)
+      {
+         Assert.That(BuildEngine.LogErrorEvents.Count, Is.EqualTo(errorCount));
+         Assert.That(BuildEngine.LogWarningEvents.Count, Is.EqualTo(warningCount));
+         Assert.That(BuildEngine.LogCustomEvents.Count, Is.EqualTo(customCount));
+         Assert.That(BuildEngine.LogMessageEvents.Count, Is.EqualTo(messageCount));
       }
 
 
       [NotNull]
-      private NuPackage CreateTask([NotNull] string nuGetSpec, [NotNull] string version, [NotNull] string packageFileName)
+      private string CreatePackageFileName([NotNull] string nameBase)
       {
-         ITaskItem taskItem = CreateTaskItem(BasePath, nuGetSpec);
+         string fileName = string.Format("{0}.nupkg", nameBase);
+         return Path.Combine(BasePath, fileName);
+      }
+
+
+      [NotNull]
+      private string CreatePackageFileNameWithVersion([NotNull] string nameBase, [NotNull] string version)
+      {
+         return CreatePackageFileName(string.Format("{0}.{1}", nameBase, version));
+      }
+
+
+      [NotNull]
+      private NuPackage CreateTaskFromSpec([NotNull] NuSpec spec, [NotNull] string version, [NotNull] string packageFileName)
+      {
+         ITaskItem taskItem = CreateTaskItem(spec);
+         return CreateTask(taskItem, version, packageFileName);
+      }
+
+
+      [NotNull]
+      private NuPackage CreateTask([NotNull] ITaskItem taskItem, [NotNull] string version, [NotNull] string packageFileName)
+      {
          taskItem.SetMetadata("NuPackageVersion", version);
-         taskItem.SetMetadata("NuPackagePath", Path.Combine(BasePath, packageFileName));
-         return CreateTask(BasePath, BasePath, new[] { taskItem });
+         taskItem.SetMetadata("NuPackagePath", packageFileName);
+         FilesToClean.Add(packageFileName);
+         return CreateTask(BasePath, BasePath, new[]
+         {
+            taskItem
+         });
       }
 
 

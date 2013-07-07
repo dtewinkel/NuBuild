@@ -6,6 +6,7 @@ using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using NUnit.Framework;
 using JetBrains.Annotations;
+using NuSpecGenerator;
 
 namespace Tasks.UnitTests
 {
@@ -80,13 +81,34 @@ namespace Tasks.UnitTests
       [NotNull]
       protected ITaskItem CreateTaskItem([NotNull] string basePath, [NotNull] string nuGetSpec)
       {
-         string inputFileName = Path.Combine(basePath, Guid.NewGuid() + ".nuspec");
-         FilesToClean.Add(inputFileName);
+         string inputFileName = GetNuSpecFileName(BasePath);
 
          File.WriteAllText(inputFileName, nuGetSpec, Encoding.UTF8);
 
          ITaskItem taskItem = new TaskItem(inputFileName);
          return taskItem;
       }
+
+
+      [NotNull]
+      protected ITaskItem CreateTaskItem([NotNull] NuSpec spec)
+      {
+         string inputFileName = GetNuSpecFileName(BasePath);
+
+         spec.WriteToFile(inputFileName);
+
+         ITaskItem taskItem = new TaskItem(inputFileName);
+         return taskItem;
+      }
+
+
+      [NotNull]
+      string GetNuSpecFileName([NotNull] string basePath)
+      {
+         string fileName = Path.Combine(basePath, Guid.NewGuid() + ".nuspec");
+         FilesToClean.Add(fileName);
+         return fileName;
+      }
+
    }
 }
