@@ -17,18 +17,42 @@ namespace NuSpecGenerator
          }
       }
 
+      #region Required fields.
 
       [CanBeNull]
       public string Id { get; set; }
 
-
       [CanBeNull]
       public string Version { get; set; }
+
+      [CanBeNull]
+      public string Description { get; set; }
+
+      [CanBeNull]
+      public string Authors { get; set; }
+
+      #endregion
+
+      #region Optional fields.
+
+      /// <summary>
+      /// Property to get or set the title of the project.
+      /// </summary>
+      /// <value>
+      /// The title of the project. By default a generated <see cref="Guid"/>.
+      /// </value>
+      [CanBeNull]
+      public string Title { get; set; }
+
+      #endregion
 
       public Metadata()
       {
          Id = "Test.Project";
          Version = "1.0.0";
+         Description = "A unit-test package.";
+         Authors = "Brent M. Spell, Daniël te Winkel";
+         Title = Guid.NewGuid().ToString();
       }
 
 
@@ -42,9 +66,18 @@ namespace NuSpecGenerator
          {
             writer.WriteElementString("version", Version);
          }
-         writer.WriteElementString("title", "A Unit-Test Library Package");
-         writer.WriteElementString("authors", "Brent M. Spell, Daniël te Winkel");
-         writer.WriteElementString("description", "A unit-test package.");
+         if (Title != null)
+         {
+            writer.WriteElementString("title", Title);
+         }
+         if (Authors != null)
+         {
+            writer.WriteElementString("authors", Authors);
+         }
+         if (Description != null)
+         {
+            writer.WriteElementString("description", Description);
+         }
       }
    }
 }

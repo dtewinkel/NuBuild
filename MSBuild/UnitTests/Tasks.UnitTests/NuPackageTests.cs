@@ -121,6 +121,10 @@ namespace Tasks.UnitTests
          Assert.IsNotNull(spec);
          Assert.IsNotNull(spec.Package);
          Assert.IsNotNull(spec.Package.Metadata);
+         Assert.IsNotNull(spec.Package.Metadata.Id);
+         Assert.IsNotNull(spec.Package.Metadata.Version);
+         Assert.IsNotNull(spec.Package.Metadata.Description);
+         Assert.IsNotNull(spec.Package.Metadata.Authors);
 
          string id = spec.Package.Metadata.Id;
          SemanticVersion version = new SemanticVersion(spec.Version);
@@ -132,6 +136,12 @@ namespace Tasks.UnitTests
          Assert.IsNotNull(package);
          Assert.That(package.Id, Is.EqualTo(id));
          Assert.That(package.Version, Is.EqualTo(version));
+         Assert.That(package.Description, Is.EqualTo(spec.Package.Metadata.Description));
+         Assert.That(package.Authors, Is.EqualTo(spec.Package.Metadata.Authors.Split(',')));
+         if (spec.Package.Metadata.Title != null)
+         {
+            Assert.That(package.Title, Is.EqualTo(spec.Package.Metadata.Title));
+         }
          return package;
       }
 
