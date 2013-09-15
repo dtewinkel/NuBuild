@@ -44,26 +44,31 @@ namespace NuBuild.MSBuild
       private Project propertyProject = null;
 
       #region Task Parameters
+
       /// <summary>
       /// The full project path
       /// </summary>
       [Required]
       public String ProjectPath { get; set; }
+
       /// <summary>
       /// The source .nuspec file items
       /// </summary>
       [Required]
       public ITaskItem[] NuSpec { get; set; }
+
       /// <summary>
       /// The project output directory path
       /// </summary>
       [Required]
       public String OutputPath { get; set; }
+
       /// <summary>
       /// The list of DLLs referenced by the current
       /// NuGet project
       /// </summary>
       public ITaskItem[] ReferenceLibraries { get; set; }
+
       #endregion
 
       /// <summary>
@@ -73,7 +78,7 @@ namespace NuBuild.MSBuild
       /// True if successful
       /// False otherwise
       /// </returns>
-      public override Boolean Execute ()
+      public override Boolean Execute()
       {
          try
          {
@@ -87,33 +92,39 @@ namespace NuBuild.MSBuild
          }
          catch (Exception e)
          {
-            Log.LogError("{0} ({1})", e.Message, e.GetType().Name);
-            return false;
+            string error = string.Format("{1} Exception in NuPackage task: {0}", e.Message, e.GetType().Name);
+            Log.LogError(error);
          }
-         return true;
+         return !Log.HasLoggedErrors;
       }
+
+
       /// <summary>
       /// Compiles a single .nuspec file
       /// </summary>
       /// <param name="specItem">
       /// The .nuspec file to compile
       /// </param>
-      private void BuildPackage (ITaskItem specItem)
+      private void BuildPackage(ITaskItem specItem)
       {
          // load the package manifest (nuspec) from the task item
          // using the nuget package builder
          var specPath = specItem.GetMetadata("FullPath");
-         var builder = (NuGet.PackageBuilder)null;
-         using (var specFile = File.OpenRead(specPath))
-            builder = new NuGet.PackageBuilder(
-               specFile,
-               Path.GetDirectoryName(specPath),
-               this as NuGet.IPropertyProvider
-            );
+         var builder = new NuGet.PackageBuilder(specPath, this, false);
          // initialize dynamic manifest properties
          var version = specItem.GetMetadata("NuPackageVersion");
          if (!String.IsNullOrEmpty(version))
-            builder.Version = new NuGet.SemanticVersion(version);
+         {
+            try
+            {
+               builder.Version = new NuGet.SemanticVersion(version);
+            }
+            catch (ArgumentException)
+            {
+               Log.LogError(null, null, null, specPath, 0, 0, 0, 0, "Version '{0}' is not a valid version for NuGet.", version);
+               return;
+            }
+         }
          // add a new file to the folder for each project
          // referenced by the current project
          AddLibraries(builder);
@@ -122,13 +133,15 @@ namespace NuBuild.MSBuild
          using (var pkgFile = File.Create(pkgPath))
             builder.Save(pkgFile);
       }
+
+
       /// <summary>
       /// Adds project references to the package lib section
       /// </summary>
       /// <param name="builder">
       /// The current package builder
       /// </param>
-      private void AddLibraries (NuGet.PackageBuilder builder)
+      private void AddLibraries(NuGet.PackageBuilder builder)
       {
          // add package files from project references
          // . DLL references go in the lib package folder
@@ -140,24 +153,26 @@ namespace NuBuild.MSBuild
             var folder = "content";
             if (ext == ".dll")
                folder = "lib";
-            else if (ext == ".exe")
-               folder = "tools";
+            else
+               if (ext == ".exe")
+                  folder = "tools";
             builder.Files.Add(
-               new NuGet.PhysicalPackageFile()
-               {
-                  SourcePath = libItem.GetMetadata("FullPath"),
-                  TargetPath = String.Format(
-                     @"{0}\{1}{2}",
-                     folder,
-                     libItem.GetMetadata("Filename"),
-                     libItem.GetMetadata("Extension")
-                  )
-               }
-            );
+                              new NuGet.PhysicalPackageFile
+                              {
+                                 SourcePath = libItem.GetMetadata("FullPath"),
+                                 TargetPath = String.Format(
+                                                            @"{0}\{1}{2}",
+                                    folder,
+                                    libItem.GetMetadata("Filename"),
+                                    libItem.GetMetadata("Extension")
+                                    )
+                              }
+               );
          }
       }
 
       #region IPropertyProvider Implementation
+
       /// <summary>
       /// Retrieves nuget replacement values from a referenced
       /// assembly library or MSBuild property, as specified here:
@@ -169,7 +184,7 @@ namespace NuBuild.MSBuild
       /// <returns>
       /// The replacement property value
       /// </returns>
-      public dynamic GetPropertyValue (String property)
+      public dynamic GetPropertyValue(String property)
       {
          // attempt to resolve the property from the referenced libraries
          foreach (var libItem in this.ReferenceLibraries)
@@ -179,7 +194,10 @@ namespace NuBuild.MSBuild
             {
                asm = Assembly.Load(File.ReadAllBytes(libItem.GetMetadata("FullPath")));
             }
-            catch { }
+            catch
+            {
+               continue;
+            }
             if (asm != null)
             {
                if (property == "id")
@@ -190,7 +208,7 @@ namespace NuBuild.MSBuild
                if (property == "author")
                {
                   var attr = (AssemblyCompanyAttribute)asm
-                     .GetCustomAttributes(typeof(AssemblyCompanyAttribute), false)
+                     .GetCustomAttributes(typeof (AssemblyCompanyAttribute), false)
                      .FirstOrDefault();
                   if (attr != null)
                      return attr.Company;
@@ -198,7 +216,7 @@ namespace NuBuild.MSBuild
                if (property == "description")
                {
                   var attr = (AssemblyDescriptionAttribute)asm
-                     .GetCustomAttributes(typeof(AssemblyDescriptionAttribute), false)
+                     .GetCustomAttributes(typeof (AssemblyDescriptionAttribute), false)
                      .FirstOrDefault();
                   if (attr != null)
                      return attr.Description;
@@ -211,11 +229,9 @@ namespace NuBuild.MSBuild
          {
             // attempt to retrieve the project from the global collection
             // this should always work in Visual Studio
-            this.propertyProject = ProjectCollection
-               .GlobalProjectCollection
-               .LoadedProjects
-               .Where(p => StringComparer.OrdinalIgnoreCase.Compare(p.FullPath, this.ProjectPath) == 0)
-               .FirstOrDefault();
+            this.propertyProject = ProjectCollection.GlobalProjectCollection.LoadedProjects
+               .FirstOrDefault(p => StringComparer.OrdinalIgnoreCase.Compare(p.FullPath, this.ProjectPath) == 0);
+
             //---------------------------------------------------------------
             // HACK: bspell - 6/25/2013
             // . unfortunately, MSBuild does not maintain the current project
@@ -234,17 +250,17 @@ namespace NuBuild.MSBuild
             if (this.propertyProject == null)
             {
                var prop = BuildManager.DefaultBuildManager.GetType().GetProperty(
-                  "Microsoft.Build.BackEnd.IBuildComponentHost.BuildParameters", 
+                                                                                 "Microsoft.Build.BackEnd.IBuildComponentHost.BuildParameters",
                   BindingFlags.Instance | BindingFlags.NonPublic
-               );
+                  );
                if (prop == null)
                   throw new NotSupportedException("Unable to retrieve MSBuild parameters using reflection");
                var param = (BuildParameters)prop
                   .GetValue(BuildManager.DefaultBuildManager, null);
                this.propertyProject = ProjectCollection.GlobalProjectCollection
                   .LoadProject(
-                     this.ProjectPath, 
-                     param.GlobalProperties, 
+                               this.ProjectPath,
+                     param.GlobalProperties,
                      ProjectCollection.GlobalProjectCollection.DefaultToolsVersion
                   );
             }
@@ -256,6 +272,7 @@ namespace NuBuild.MSBuild
                .FirstOrDefault();
          return null;
       }
+
       #endregion
    }
 }

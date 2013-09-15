@@ -133,11 +133,13 @@ namespace NuBuild.MSBuild
          }
          catch (Exception e)
          {
-            Log.LogError("{0} ({1})", e.Message, e.GetType().Name);
+            string error = string.Format("{1} Exception in NuPrepare task: {0}", e.Message, e.GetType().Name);
+            Log.LogError(error);
             return false;
          }
-         return true;
+         return !Log.HasLoggedErrors;
       }
+
       /// <summary>
       /// Prepares a single .nuspec file for packaging
       /// </summary>
