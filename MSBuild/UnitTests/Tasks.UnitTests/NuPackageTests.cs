@@ -42,6 +42,27 @@ namespace Tasks.UnitTests
       }
 
 
+
+      [Test]
+      public void InvalidVersionTest()
+      {
+         // Prepare.
+         const string packageId = "Test.Project";
+         const string version = "a.b.c";
+         string filePath = CreatePackageFileName(packageId);
+
+         NuSpec spec = new NuSpec(packageId, version);
+         NuPackage task = CreateTaskFromSpec(spec, version, filePath);
+
+         // Act.
+         bool success = task.Execute();
+
+         // Assert.
+         AssertFailAndHasErrors(success, errorCount: 1);
+         Assert.That(BuildEngine.LogErrorEvents[0].Message, Contains.Substring("Version 'a.b.c' is not a valid version for NuGet."));
+      }
+
+
       [Test]
       public void PreReleaseVersionTest()
       {

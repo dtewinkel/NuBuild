@@ -110,14 +110,27 @@ namespace NuBuild.MSBuild
          // load the package manifest (nuspec) from the task item
          // using the nuget package builder
          var specPath = specItem.GetMetadata("FullPath");
-         var builder = new NuGet.PackageBuilder(specPath, this, false);
-         // initialize dynamic manifest properties
+         if (specPath == null)
+         {
+            Log.LogError("Could not get metadata 'FullPath' from task item '{0}'.", specItem.ItemSpec);
+            return;
+         }
+
+         // write the configured package out to disk
+         var pkgPath = specItem.GetMetadata("NuPackagePath");
+         if (pkgPath == null)
+         {
+            Log.LogError("Could not get metadata 'NuPackagePath' from task item '{0}'.", pkgPath);
+            return;
+         }
+
          var version = specItem.GetMetadata("NuPackageVersion");
+         NuGet.SemanticVersion semanticVersion = null;
          if (!String.IsNullOrEmpty(version))
          {
             try
             {
-               builder.Version = new NuGet.SemanticVersion(version);
+               semanticVersion = new NuGet.SemanticVersion(version);
             }
             catch (ArgumentException)
             {
@@ -125,13 +138,27 @@ namespace NuBuild.MSBuild
                return;
             }
          }
-         // add a new file to the folder for each project
-         // referenced by the current project
-         AddLibraries(builder);
-         // write the configured package out to disk
-         var pkgPath = specItem.GetMetadata("NuPackagePath");
-         using (var pkgFile = File.Create(pkgPath))
-            builder.Save(pkgFile);
+
+         try
+         {
+            var builder = new NuGet.PackageBuilder(specPath, this, false);
+            // initialize dynamic manifest properties
+            if (semanticVersion != null)
+            {
+               builder.Version = semanticVersion;
+            }
+
+            // add a new file to the folder for each project
+            // referenced by the current project
+            AddLibraries(builder);
+            // write the configured package out to disk
+            using (var pkgFile = File.Create(pkgPath))
+               builder.Save(pkgFile);
+         }
+         catch (Exception e)
+         {
+            Log.LogError(null, null, null, specPath, 0, 0, 0, 0, "{0} exception while packaging spec file: {1}", e.GetType().Name, e.Message);
+         }
       }
 
 
