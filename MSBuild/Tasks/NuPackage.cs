@@ -116,7 +116,7 @@ namespace NuBuild.MSBuild
             return;
          }
 
-         // write the configured package out to disk
+         // initialize dynamic manifest properties
          var pkgPath = specItem.GetMetadata("NuPackagePath");
          if (pkgPath == null)
          {
